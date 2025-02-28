@@ -1,0 +1,42 @@
+name: Update Latest APK Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apk/*signed*.apk"  # Attiva solo se cambia un APK signed
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Find Latest Version APK
+        id: find_apk
+        run: |
+          # Trova il file "signed" con la versione più alta
+          LATEST_APK=$(ls apk/*signed*.apk | grep -oP 'v?\d+\.\d+' | sort -V | tail -n 1)
+          APK_FILE=$(ls apk/*"$LATEST_APK"*signed*.apk | tail -n 1)
+
+          if [[ -z "$APK_FILE" ]]; then
+            echo "❌ Nessun APK trovato, terminazione"
+            exit 1
+          fi
+
+          echo "📦 Ultima versione trovata: $LATEST_APK"
+          echo "APK_PATH=$APK_FILE" >> $GITHUB_ENV
+
+      - name: Delete Existing Release
+        run: |
+          gh release delete latest --yes || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create New Release and Upload APK
+        run: |
+          gh release create latest "$APK_PATH" --title "Latest APK" --notes "Newest signed APK version: $APK_PATH" --prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
