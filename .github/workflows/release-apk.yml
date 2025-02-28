@@ -7,6 +7,9 @@ on:
     paths:
       - "apk/*signed*.apk"  # Attiva solo se cambia un APK signed
 
+permissions:
+  contents: write  # Needed for creating releases
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -17,26 +20,58 @@ jobs:
       - name: Find Latest Version APK
         id: find_apk
         run: |
-          # Trova il file "signed" con la versione più alta
-          LATEST_APK=$(ls apk/*signed*.apk | grep -oP 'v?\d+\.\d+' | sort -V | tail -n 1)
-          APK_FILE=$(ls apk/*"$LATEST_APK"*signed*.apk | tail -n 1)
+          # Find all signed APK files
+          APK_FILES=$(find apk -name "*signed*.apk")
 
-          if [[ -z "$APK_FILE" ]]; then
-            echo "❌ Nessun APK trovato, terminazione"
+          if [[ -z "$APK_FILES" ]]; then
+            echo "❌ No signed APK found, terminating"
             exit 1
           fi
 
-          echo "📦 Ultima versione trovata: $LATEST_APK"
-          echo "APK_PATH=$APK_FILE" >> $GITHUB_ENV
+          # Extract version numbers and find the highest one
+          LATEST_VERSION=""
+          LATEST_APK=""
+
+          for apk in $APK_FILES; do
+            # Extract version number (like 1.0, 2.1, etc.)
+            VERSION=$(echo "$apk" | grep -oP '\d+\.\d+(?=\s+signed)')
+
+            if [[ -n "$VERSION" ]]; then
+              # Compare versions using version sort
+              if [[ -z "$LATEST_VERSION" ]] || [[ "$(echo -e "$VERSION\n$LATEST_VERSION" | sort -V | tail -n1)" == "$VERSION" ]]; then
+                LATEST_VERSION="$VERSION"
+                LATEST_APK="$apk"
+              fi
+            fi
+          done
+
+          if [[ -z "$LATEST_APK" ]]; then
+            echo "❌ Could not determine latest version, using most recent file"
+            LATEST_APK=$(echo "$APK_FILES" | sort -r | head -n 1)
+          fi
+
+          echo "📦 Latest version found: $LATEST_VERSION (File: $LATEST_APK)"
+          echo "APK_PATH=$LATEST_APK" >> $GITHUB_ENV
 
       - name: Delete Existing Release
         run: |
           gh release delete latest --yes || true
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create New Release and Upload APK
         run: |
-          gh release create latest "$APK_PATH" --title "Latest APK" --notes "Newest signed APK version: $APK_PATH" --prerelease
+          # Extract version number for the release title
+          VERSION=$(echo "$APK_PATH" | grep -oP '\d+\.\d+(?=\s+signed)')
+
+          if [[ -z "$VERSION" ]]; then
+            TITLE="Latest APK"
+            NOTES="Newest signed APK: $APK_PATH"
+          else
+            TITLE="Geos v$VERSION"
+            NOTES="Newest signed APK version: v$VERSION\nFile: $APK_PATH"
+          fi
+
+          gh release create latest "$APK_PATH" --title "$TITLE" --notes "$NOTES" --prerelease
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
