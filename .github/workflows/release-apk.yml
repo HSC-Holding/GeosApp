@@ -33,7 +33,7 @@ jobs:
           LATEST_VERSION=""
           LATEST_APK=""
 
-          for apk in $APK_FILES; do
+          for apk in "$APK_FILES"; do
             # Extract version number (like 1.0, 2.1, etc.)
             VERSION=$(echo "$apk" | grep -oP '\d+\.\d+(?=\s+signed)')
 
