@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "apk/*signed*.apk"  # Attiva solo se cambia un APK signed
+  workflow_dispatch:  # Attiva manualmente
 
 permissions:
   contents: write  # Needed for creating releases
