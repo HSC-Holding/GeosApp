@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "apk/*signed*.apk"  # Attiva solo se cambia un APK signed
+      - "apk/*signed.apk"  # Attiva solo se cambia un APK signed
   workflow_dispatch:  # Attiva manualmente
 
 permissions:
@@ -22,37 +22,34 @@ jobs:
         id: find_apk
         run: |
           # Find all signed APK files
-          APK_FILES=$(find apk -name "*signed*.apk")
+          mapfile -t APK_FILES < <(find apk -name "*signed.apk" | sort -V)
 
-          if [[ -z "$APK_FILES" ]]; then
+          if [[ ${#APK_FILES[@]} -eq 0 ]]; then
             echo "❌ No signed APK found, terminating"
             exit 1
           fi
 
-          # Extract version numbers and find the highest one
-          LATEST_VERSION=""
-          LATEST_APK=""
+          # Select the latest file (last in sorted list)
+          LATEST_APK="${APK_FILES[-1]}"
 
-          for apk in "$APK_FILES"; do
-            # Extract version number (like 1.0, 2.1, etc.)
-            VERSION=$(echo "$apk" | grep -oP '\d+\.\d+(?=\s+signed)')
-
-            if [[ -n "$VERSION" ]]; then
-              # Compare versions using version sort
-              if [[ -z "$LATEST_VERSION" ]] || [[ "$(echo -e "$VERSION\n$LATEST_VERSION" | sort -V | tail -n1)" == "$VERSION" ]]; then
-                LATEST_VERSION="$VERSION"
-                LATEST_APK="$apk"
-              fi
-            fi
-          done
-
-          if [[ -z "$LATEST_APK" ]]; then
-            echo "❌ Could not determine latest version, using most recent file"
-            LATEST_APK=$(echo "$APK_FILES" | sort -r | head -n 1)
-          fi
+          # Extract version number from filename (geos-v1.0-signed.apk -> 1.0)
+          LATEST_VERSION=$(echo "$LATEST_APK" | grep -oP '(?<=geos-v)\d+\.\d+(?=-signed)')
 
           echo "📦 Latest version found: $LATEST_VERSION (File: $LATEST_APK)"
           echo "APK_PATH=$LATEST_APK" >> $GITHUB_ENV
+          echo "APK_VERSION=$LATEST_VERSION" >> $GITHUB_ENV
+
+      - name: Rename APK to Static Name
+        run: |
+          # Define new name for the APK
+          RENAMED_APK="apk/geos-latest.apk"
+
+          # Rename the APK file
+          mv "$APK_PATH" "$RENAMED_APK"
+
+          # Update the environment variable
+          echo "APK_PATH=$RENAMED_APK" >> $GITHUB_ENV
+          echo "✅ APK renamed to: $RENAMED_APK"
 
       - name: Delete Existing Release
         run: |
@@ -62,17 +59,15 @@ jobs:
 
       - name: Create New Release and Upload APK
         run: |
-          # Extract version number for the release title
-          VERSION=$(echo "$APK_PATH" | grep -oP '\d+\.\d+(?=\s+signed)')
-
-          if [[ -z "$VERSION" ]]; then
+          # Use extracted version for title and notes
+          if [[ -z "$APK_VERSION" ]]; then
             TITLE="Latest APK"
             NOTES="Newest signed APK: $APK_PATH"
           else
-            TITLE="Geos v$VERSION"
-            NOTES="Newest signed APK version: v$VERSION\nFile: $APK_PATH"
+            TITLE="Geos v$APK_VERSION"
+            NOTES="Newest signed APK version: v$APK_VERSION\nFile: $APK_PATH"
           fi
 
-          gh release create latest "$APK_PATH" --title "$TITLE" --notes "$NOTES" --prerelease
+          gh release create latest "$APK_PATH" --title "$TITLE" --notes "$NOTES" --prerelease --disable-autorelease-assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,7 +6,7 @@ Welcome to the **Geos App** repository! Here you can always find the latest vers
 
 To get the latest signed version of the app, click the link below:
 
-➡️ **[Download Geos App](https://github.com/HSC-Holding/GeosApp/releases/download/latest/Geos.1.0.signed.apk)**
+➡️ **[Download Geos App](https://github.com/HSC-Holding/GeosApp/releases/download/latest/geos-latest.apk)**
 
 This link will always point to the most recent release of the application.
 
@@ -25,7 +25,7 @@ Follow these steps to install the APK on your Android device:
 ## 🔄 Updating to a New Version
 
 When a new version is released:
-1. Download the new APK from the same **[link](https://github.com/HSC-Holding/GeosApp/releases/download/latest/Geos.1.0.signed.apk)**.
+1. Download the new APK from the same **[link](https://github.com/HSC-Holding/GeosApp/releases/download/latest/geos-latest.apk)**.
 2. Install it over the existing app (no need to uninstall the old version).
 
 ## ❓ Troubleshooting
