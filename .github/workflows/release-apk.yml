@@ -68,6 +68,6 @@ jobs:
             NOTES="Newest signed APK version: v$APK_VERSION\nFile: $APK_PATH"
           fi
 
-          gh release create latest "$APK_PATH" --title "$TITLE" --notes "$NOTES" --prerelease --disable-autorelease-assets
+          gh release create latest "$APK_PATH" --title "$TITLE" --notes "$NOTES" --prerelease
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
